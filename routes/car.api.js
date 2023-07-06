@@ -4,7 +4,6 @@ const router = express.Router();
 
 // CREATE
 router.post('/', createCar);
-
 // READ
 router.get('/', getCars);
 
