@@ -11,7 +11,7 @@ carController.createCar = async (req, res, next) => {
     if (
       !make ||
       !model ||
-      !release_date ||
+      !year ||
       !transmission_type ||
       !size ||
       !style ||
