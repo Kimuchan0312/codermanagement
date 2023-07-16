@@ -4,7 +4,7 @@ const carController = {};
 
 carController.createCar = async (req, res, next) => {
   try {
-    const { make, model, release_date, transmission_type, size, style, price } =
+    const { make, model, year, transmission_type, size, style, price } =
       req.body;
 
     // Validate the required fields
@@ -24,7 +24,7 @@ carController.createCar = async (req, res, next) => {
     const newCar = new Car({
       make,
       model,
-      release_date,
+      year,
       transmission_type,
       size,
       style,
@@ -76,7 +76,7 @@ carController.getCars = async (req, res, next) => {
 
 carController.editCar = async (req, res, next) => {
   try {
-    const carId = red.params.id;
+    const carId = req.params.id;
 
     // Find the car by ID in the database
     const car = await Car.findById(carId);
@@ -86,13 +86,13 @@ carController.editCar = async (req, res, next) => {
     }
 
     // Update the car properties based on the request body
-    car.make = req.body.make || car.make;
-    car.model = req.body.model || car.model;
-    car.release_date = req.body.release_date || car.release_date;
-    car.transmission_type = req.body.transmission_type || car.transmission_type;
-    car.size = req.body.size || car.size;
-    car.style = req.body.style || car.style;
-    car.price = req.body.price || car.price;
+    car.Make = req.body.Make || car.Make;
+    car.Model = req.body.Model || car.Model;
+    car.Year = req.body.Year || car.Year;
+    car['Transmission Type'] = req.body['Transmission Type'] || car['Transmission Type'];
+    car['Vehicle Size'] = req.body['Vehicle Size']|| car['Vehicle Size'];
+    car['Vehicle Style'] = req.body['Vehicle Style'] || car['Vehicle Style'];
+    car['MSRP'] = req.body['MSRP'] || car['MSRP'];
 
     // Save the updated car to the database
     const updatedCar = await car.save();
