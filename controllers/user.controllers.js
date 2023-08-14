@@ -1,30 +1,41 @@
 const { sendResponse, AppError } = require("../helpers/utils.js");
+const User = require("../models/User.js");
 
 const userController = (DATABASE) => {
   //Create a user
+
   const createUser = async (req, res, next) => {
-    //in real project you will getting info from req
-    const info = {
-      name: "user",
-      flag: false,
-    };
     try {
-      //always remember to control your inputs
-      if (!info) throw new AppError(402, "Bad Request", "Create User Error");
-      //mongoose query
-      const created = await User.create(info);
+      const { name, role = "employee" } = await req.body; // Get name and role from the request body
+  
+      // Validate input
+      if (!name) {
+        throw new AppError(400, "Bad Request", "Name is required");
+      }
+  
+      // Create a new user
+      const newUser = new User({
+        name,
+        role,
+      });
+  
+      // Save the user to the database
+      const createdUser = await newUser.save();
+  
+      // Send response
       sendResponse(
         res,
-        200,
+        201,
         true,
-        { data: created },
+        { data: createdUser },
         null,
-        "Create User Success"
+        "User created successfully"
       );
     } catch (err) {
       next(err);
     }
   };
+
   //Get all users
   const getAllUsers = async (req, res, next) => {
     const filter = {};
@@ -76,8 +87,6 @@ const userController = (DATABASE) => {
     //Delete a user
 
     const deleteUserById = async (req, res, next) => {
-      //in real project you will getting id from req. For updating and deleting, it is recommended for you to use unique identifier such as _id to avoid duplication
-
       // empty target mean delete nothing
       const targetId = null;
       //options allow you to modify query. e.g new true return lastest update of data
@@ -98,14 +107,14 @@ const userController = (DATABASE) => {
         next(err);
       }
     };
-  };
 
   return {
-    createlUser,
+    createUser,
     getAllUsers,
     updateUserById,
     deleteUserById,
   };
 };
+}
 //export
 module.exports = userController;

@@ -6,27 +6,28 @@ const taskController = (DATABASE) => {
 //Create a task
 const createTask = async (req, res, next) => {
   try {
-  const info = {
-    name: "task",
-    description: "any task",
-    assignee: "assignee",
-  };
-   if (!info) throw new AppError(400, "Bad Request", "Create Task Error");
-    //in real project you must also check if id (referenceTo) is valid as well as if document with given id is exist before any futher process
-    //mongoose query
-    const created = await Task.create(info);
-    sendResponse(
-      res,
-      200,
-      true,
-      { data: created },
-      null,
-      "Create Task Success"
-    );
+    const { name, description, assignee } = req.body; // Extract data from the request body
+
+    const newTask = new Task({
+      name: name,
+      description: description,
+      assignee: assignee,
+    });
+
+    const createdTask = await newTask.save();
+
+    // Send a success response to the client
+    res.status(201).json({
+      success: true,
+      data: createdTask,
+      message: "Task created successfully",
+    });
   } catch (err) {
+    // Pass the error to the error handling middleware
     next(err);
   }
 };
+  
 //updatetask
 
 const addReference = async (req, res, next) => {
