@@ -4,12 +4,10 @@ const mongoose = require("mongoose");
 const taskController = require("../controllers/task.controllers.js");
 const userController = require("../controllers/user.controllers.js")
 
-// Custom validation function to check if the input is a valid MongoDB ObjectId
-const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
-
 
 const routes = function() {
     const apiRoute = express.Router();
+
     apiRoute.route("/users").get(userController.getAllUsers);
     apiRoute.route("/user").post(userController.createUser);
     apiRoute.route("/user/:id")

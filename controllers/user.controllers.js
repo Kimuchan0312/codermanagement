@@ -6,22 +6,22 @@ const userController = (DATABASE) => {
 
   const createUser = async (req, res, next) => {
     try {
-      const { name, role = "employee" } = await req.body; // Get name and role from the request body
-  
+      const { name, role = "employee" } = req.body; // Get name and role from the request body
+
       // Validate input
       if (!name) {
         throw new AppError(400, "Bad Request", "Name is required");
       }
-  
+
       // Create a new user
       const newUser = new User({
         name,
         role,
       });
-  
+
       // Save the user to the database
       const createdUser = await newUser.save();
-  
+
       // Send response
       sendResponse(
         res,
@@ -84,29 +84,30 @@ const userController = (DATABASE) => {
     } catch (err) {
       next(err);
     }
-    //Delete a user
+  };
+  //Delete a user
 
-    const deleteUserById = async (req, res, next) => {
-      // empty target mean delete nothing
-      const targetId = null;
-      //options allow you to modify query. e.g new true return lastest update of data
-      const options = { new: true };
-      try {
-        //mongoose query
-        const updated = await User.findByIdAndDelete(targetId, options);
+  const deleteUserById = async (req, res, next) => {
+    // empty target mean delete nothing
+    const targetId = null;
+    //options allow you to modify query. e.g new true return lastest update of data
+    const options = { new: true };
+    try {
+      //mongoose query
+      const updated = await User.findByIdAndDelete(targetId, options);
 
-        sendResponse(
-          res,
-          200,
-          true,
-          { data: updated },
-          null,
-          "Delete user success"
-        );
-      } catch (err) {
-        next(err);
-      }
-    };
+      sendResponse(
+        res,
+        200,
+        true,
+        { data: updated },
+        null,
+        "Delete user success"
+      );
+    } catch (err) {
+      next(err);
+    }
+  };
 
   return {
     createUser,
@@ -114,7 +115,8 @@ const userController = (DATABASE) => {
     updateUserById,
     deleteUserById,
   };
+  
 };
-}
+
 //export
 module.exports = userController;
