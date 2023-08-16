@@ -19,7 +19,7 @@ taskController.createTask = async (req, res, next) => {
       name: name,
       description: description,
       assignee: assignee,
-      status: req.body.status || "pending"
+      status: req.body.status || "pending",
     });
 
     const createdTask = await newTask.save();
@@ -37,23 +37,6 @@ taskController.createTask = async (req, res, next) => {
 };
 
 taskController.getAllTasks = async (req, res, next) => {
-    try {
-      // Retrieve all tasks from the database
-      const tasks = await Task.find();
-  
-      // Respond with the list of tasks
-      res.json({
-        message: "Get All Tasks Successfully",
-        tasks
-      });
-    } catch (err) {
-      console.error("Error:", err);
-      res.status(500).json({ error: "An internal server error occurred." });
-    }
-  };
-
-
-taskController.getTasks = async (req, res, next) => {
   try {
     const { status, sortBy } = req.query;
 
@@ -69,12 +52,50 @@ taskController.getTasks = async (req, res, next) => {
       sort[sortBy] = 1; // 1 for ascending order, -1 for descending order
     }
 
-    const tasks = await Task.find(filter).sort(sort).populate("assignee");
-
-    res.json({
-        message: "Get Task List Successfully",
-        tasks
+    // If no status parameter is provided, retrieve all tasks
+    if (!status) {
+      const allTasks = await Task.find({ isDeleted: { $ne: true } }).sort(sort)
+      return res.json({
+        message: "Get All Tasks Successfully",
+        tasks: allTasks,
       });
+    }
+
+    // Retrieve tasks based on the provided status parameter
+    const filteredTasks = await Task.find(filter)
+      .sort(sort)
+    res.json({
+      message: "Get Task List Successfully",
+      tasks: filteredTasks,
+    });
+  } catch (err) {
+    console.error("Error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
+  }
+};
+
+taskController.getTaskById = async (req, res, next) => {
+  try {
+    const taskId = req.params.id;
+
+    // Find the user by ID in the database
+    const task = await Task.findById(taskId);
+
+    if (!task) {
+      return res.status(404).json({ error: "Task not found." });
+    }
+    
+    if (task.isDeleted) {
+        return res.json({
+          message: "This task has been deleted.",
+          task: null,
+        });
+      }
+
+    return res.json({
+      message: "Get a Single Task By Id Successfully",
+      task: task,
+    });
   } catch (err) {
     console.error("Error:", err);
     res.status(500).json({ error: "An internal server error occured." });
@@ -91,7 +112,7 @@ taskController.getAllTasksByUserId = async (req, res, next) => {
       }  
   
       // Fetch all tasks assigned to the specified user ID
-      const tasks = await Task.find({ assignee: userId });
+      const tasks = await Task.find({ assignee: userId, isDeleted: { $ne: true } });
 
       res.json({
         message: "Get All Tasks By UserId Successfully",
@@ -102,7 +123,6 @@ taskController.getAllTasksByUserId = async (req, res, next) => {
     res.status(500).json({ error: "An internal server error occured." });
   }
 };
-
 
 taskController.editTask = async (req, res, next) => {
   try {
@@ -121,11 +141,11 @@ taskController.editTask = async (req, res, next) => {
 
     // Check if the new status adheres to the rule
     if (task.status === "done" && req.body.status !== "archive") {
-        return res.status(400).json({ error: "Invalid status update." });
-      }
-      
+      return res.status(400).json({ error: "Invalid status update." });
+    }
+
     task.status = req.body.status || task.status;
-    task.assignee = req.body.assignee || task.assignee
+    task.assignee = req.body.assignee || task.assignee;
 
     // Save the updated user to the database
     const updatedTask = await task.save();
@@ -150,7 +170,7 @@ taskController.deleteTask = async (req, res, next) => {
     if (!task) {
       return res.status(404).json({ error: "Task not found." });
     }
-   // Mark the user as deleted
+    // Mark the user as deleted
     task.isDeleted = true;
     await task.save();
 

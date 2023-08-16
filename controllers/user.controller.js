@@ -48,15 +48,15 @@ userController.getUsers = async (req, res, next) => {
     const page = parseInt(req.query.page) || 1; // Get the page number from the query parameters
 
     // Retrieve users for the requested page from the database
-    const users = await User.find()
+    const users = await User.find({ isDeleted: { $ne: true } })
       .skip((page - 1) * pageSize)
       .limit(pageSize);
 
-    // Count total number of cars in the database
-    const totalUsers = await User.countDocuments();
+    // Count total number of users in the database
+    const totalUsers = await User.countDocuments({ isDeleted: { $ne: true } });
 
     // Calculate total number of pages based on the page size
-    const totalPages = await User.countDocuments();
+    const totalPages = Math.ceil(totalUsers / pageSize);
 
     // Respond with the list of users, page number, and total number of pages
     res.json({
@@ -81,6 +81,14 @@ userController.getUserByName = async (req, res, next) => {
     if (!user) {
       throw new AppError(400, "User not found");
     }
+
+    if (user.isDeleted) {
+      return res.json({
+        message: "This user has been deleted.",
+        task: null,
+      });
+    }
+
     res.json({
       message: "Get User Successfully",
       user,
