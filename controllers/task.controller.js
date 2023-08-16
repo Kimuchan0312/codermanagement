@@ -1,15 +1,25 @@
 const mongoose = require("mongoose");
 const Task = require("../models/Task");
 const taskController = {};
+const { validationResult } = require("express-validator");
+
+const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
 
 taskController.createTask = async (req, res, next) => {
   try {
     const { name, description, assignee } = req.body; // Extract data from the request body
 
+    // Validate the required fields using express-validator
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
     const newTask = new Task({
       name: name,
       description: description,
       assignee: assignee,
+      status: req.body.status || "pending"
     });
 
     const createdTask = await newTask.save();
@@ -25,6 +35,23 @@ taskController.createTask = async (req, res, next) => {
     res.status(500).json({ error: "An internal server error occurred." });
   }
 };
+
+taskController.getAllTasks = async (req, res, next) => {
+    try {
+      // Retrieve all tasks from the database
+      const tasks = await Task.find();
+  
+      // Respond with the list of tasks
+      res.json({
+        message: "Get All Tasks Successfully",
+        tasks
+      });
+    } catch (err) {
+      console.error("Error:", err);
+      res.status(500).json({ error: "An internal server error occurred." });
+    }
+  };
+
 
 taskController.getTasks = async (req, res, next) => {
   try {
@@ -42,7 +69,7 @@ taskController.getTasks = async (req, res, next) => {
       sort[sortBy] = 1; // 1 for ascending order, -1 for descending order
     }
 
-    const tasks = await Task.find(filter).sort(sort).populate("assignedTo");
+    const tasks = await Task.find(filter).sort(sort).populate("assignee");
 
     res.json({
         message: "Get Task List Successfully",
@@ -53,6 +80,29 @@ taskController.getTasks = async (req, res, next) => {
     res.status(500).json({ error: "An internal server error occured." });
   }
 };
+
+taskController.getAllTasksByUserId = async (req, res, next) => {
+    try {
+      const { userId } = req.params; // Get the user ID from the URL parameter
+
+      // Check if userId is a valid MongoDB ObjectId
+    if (!isValidObjectId(userId)) {
+        throw new AppError(400, "Bad Request", "Invalid user ID");
+      }  
+  
+      // Fetch all tasks assigned to the specified user ID
+      const tasks = await Task.find({ assignee: userId });
+
+      res.json({
+        message: "Get All Tasks By UserId Successfully",
+        tasks
+      });
+  } catch (err) {
+    console.error("Error:", err);
+    res.status(500).json({ error: "An internal server error occured." });
+  }
+};
+
 
 taskController.editTask = async (req, res, next) => {
   try {
@@ -67,13 +117,23 @@ taskController.editTask = async (req, res, next) => {
 
     // Update the user properties based on the request body
     task.name = req.body.name || task.name;
+    task.description = req.body.description || task.description;
+
+    // Check if the new status adheres to the rule
+    if (task.status === "done" && req.body.status !== "archive") {
+        return res.status(400).json({ error: "Invalid status update." });
+      }
+      
+    task.status = req.body.status || task.status;
+    task.assignee = req.body.assignee || task.assignee
+
     // Save the updated user to the database
     const updatedTask = await task.save();
 
     // Respond with the success message and the updated user data
     res.json({
       message: "Update Task Successfully!",
-      task: Task.updatedTask,
+      task: updatedTask,
     });
   } catch (err) {
     console.error("Error:", err);
@@ -90,12 +150,13 @@ taskController.deleteTask = async (req, res, next) => {
     if (!task) {
       return res.status(404).json({ error: "Task not found." });
     }
-    // Delete the task from the database
-    await task.remove();
+   // Mark the user as deleted
+    task.isDeleted = true;
+    await task.save();
 
-    // Respond with the success message and the deleted task data
+    // Respond with the success message and the updated user data
     res.json({
-      message: "Delete Task Successfully",
+      message: "Delete Task Successfully!",
       task,
     });
   } catch (err) {

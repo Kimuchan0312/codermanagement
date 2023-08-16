@@ -1,23 +1,31 @@
 const mongoose = require("mongoose");
 const User = require("../models/User");
+const { validationResult } = require("express-validator");
+
+const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
 
 const userController = {};
 
 userController.createUser = async (req, res, next) => {
   try {
-    const { name } =
-      req.body;
+    const { name, role } = req.body;
 
-    // Validate the required fields
-    if (
-      !name
-    ) {
-      return res.status(400).json({ error: "All fields are required." });
+    // Validate the required fields using express-validator
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    // Check if the name is already taken
+    const existingUser = await User.findOne({ name });
+    if (existingUser) {
+      throw new AppError(400, "Bad Request", "Username is already taken");
     }
 
     // Create the user object
     const newUser = new User({
-      name
+      name,
+      role,
     });
 
     // Save the user to the database
@@ -63,6 +71,26 @@ userController.getUsers = async (req, res, next) => {
   }
 };
 
+userController.getUserByName = async (req, res, next) => {
+  try {
+    const { name } = req.params;
+
+    // Find the user by name
+    const user = await User.findOne({ name });
+
+    if (!user) {
+      throw new AppError(400, "User not found");
+    }
+    res.json({
+      message: "Get User Successfully",
+      user,
+    });
+  } catch (err) {
+    console.error("Error:", err);
+    res.status(500).json({ error: "An internal server error occured." });
+  }
+};
+
 userController.editUser = async (req, res, next) => {
   try {
     const userId = req.params.id;
@@ -79,38 +107,41 @@ userController.editUser = async (req, res, next) => {
     // Save the updated user to the database
     const updatedUser = await user.save();
 
-	// Respond with the success message and the updated user data
-	res.json({
-		message: 'Update User Successfully!',
-		user: User.updatedUser,
-	});
+    // Respond with the success message and the updated user data
+    res.json({
+      message: "Update User Successfully!",
+      user: User.updatedUser,
+    });
   } catch (err) {
-    console.error('Error:', err);
-	res.status(500).json({ error: 'An internal server error occured.'});
+    console.error("Error:", err);
+    res.status(500).json({ error: "An internal server error occured." });
   }
 };
 
 userController.deleteUser = async (req, res, next) => {
-  // empty target mean delete nothing
-  const targetId = null;
-  //options allow you to modify query. e.g new true return lastest update of data
-  const options = { new: true };
-  try {
-    //mongoose query
-    const updated = await User.findByIdAndDelete(targetId, options);
+  const userId = req.params.id;
 
-    sendResponse(
-      res,
-      200,
-      true,
-      { data: updated },
-      null,
-      "Delete user success"
-    );
+  try {
+    // Find the user by ID in the database
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    // Mark the user as deleted
+    user.isDeleted = true;
+    await user.save();
+
+    // Respond with the success message and the updated user data
+    res.json({
+      message: "Delete User Successfully!",
+      user,
+    });
   } catch (err) {
-    next(err);
+    console.error("Error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
   }
 };
-
 
 module.exports = userController;

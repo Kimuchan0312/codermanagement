@@ -14,13 +14,14 @@ const taskSchema = new mongoose.Schema({
       enum: ["pending", "working", "review", "done", "archive"],
       default: "pending",
     },
-    assignedTo: {
+    assignee: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       default: null,
     },
+    isDeleted: { type: Boolean, default: false }
   });
-  
+
 //Create and export model
 const Task = mongoose.model("tasks", taskSchema);
 module.exports = Task;
