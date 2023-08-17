@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const User = require("../models/User");
+const Task = require("../models/Task");
 const { validationResult } = require("express-validator");
 
 const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
@@ -15,6 +16,11 @@ userController.createUser = async (req, res, next) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
+
+    if (!name || !role) {
+      return res.status(400).json({ error: "Name and role fields are required." });
+    }
+  
 
     // Check if the name is already taken
     const existingUser = await User.findOne({ name });
@@ -99,9 +105,39 @@ userController.getUserByName = async (req, res, next) => {
   }
 };
 
+userController.getAllTasksByUserId = async (req, res, next) => {
+  try {
+    const { userId } = req.params; // Get the user ID from the URL parameter
+
+    // Check if userId is a valid MongoDB ObjectId
+    if (!isValidObjectId(userId)) {
+      throw new AppError(400, "Bad Request", "Invalid user ID");
+    }
+
+    // Fetch all tasks assigned to the specified user ID
+    const tasks = await Task.find({
+      assignee: userId,
+      isDeleted: { $ne: true },
+    });
+
+    res.json({
+      message: "Get All Tasks By UserId Successfully",
+      tasks,
+    });
+  } catch (err) {
+    console.error("Error:", err);
+    res.status(500).json({ error: "An internal server error occured." });
+  }
+};
+
 userController.editUser = async (req, res, next) => {
   try {
     const userId = req.params.id;
+
+    // Check if userId is a valid MongoDB ObjectId
+    if (!isValidObjectId(userId)) {
+      throw new AppError(400, "Bad Request", "Invalid user ID");
+    }
 
     // Find the user by ID in the database
     const user = await User.findById(userId);
@@ -118,7 +154,7 @@ userController.editUser = async (req, res, next) => {
     // Respond with the success message and the updated user data
     res.json({
       message: "Update User Successfully!",
-      user: User.updatedUser,
+      user: updatedUser,
     });
   } catch (err) {
     console.error("Error:", err);
@@ -128,6 +164,11 @@ userController.editUser = async (req, res, next) => {
 
 userController.deleteUser = async (req, res, next) => {
   const userId = req.params.id;
+
+  // Check if userId is a valid MongoDB ObjectId
+  if (!isValidObjectId(userId)) {
+    throw new AppError(400, "Bad Request", "Invalid user ID");
+  }  
 
   try {
     // Find the user by ID in the database

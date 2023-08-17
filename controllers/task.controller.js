@@ -1,15 +1,16 @@
 const mongoose = require("mongoose");
 const Task = require("../models/Task");
-const taskController = {};
 const { validationResult } = require("express-validator");
 
 const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
+
+const taskController = {};
 
 taskController.createTask = async (req, res, next) => {
   try {
     const { name, description, assignee } = req.body; // Extract data from the request body
 
-    // Validate the required fields using express-validator
+    // Handle validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
@@ -54,7 +55,7 @@ taskController.getAllTasks = async (req, res, next) => {
 
     // If no status parameter is provided, retrieve all tasks
     if (!status) {
-      const allTasks = await Task.find({ isDeleted: { $ne: true } }).sort(sort)
+      const allTasks = await Task.find({ isDeleted: { $ne: true } }).sort(sort);
       return res.json({
         message: "Get All Tasks Successfully",
         tasks: allTasks,
@@ -62,8 +63,7 @@ taskController.getAllTasks = async (req, res, next) => {
     }
 
     // Retrieve tasks based on the provided status parameter
-    const filteredTasks = await Task.find(filter)
-      .sort(sort)
+    const filteredTasks = await Task.find(filter).sort(sort);
     res.json({
       message: "Get Task List Successfully",
       tasks: filteredTasks,
@@ -78,19 +78,24 @@ taskController.getTaskById = async (req, res, next) => {
   try {
     const taskId = req.params.id;
 
+    // Check if userId is a valid MongoDB ObjectId
+    if (!isValidObjectId(taskId)) {
+      throw new AppError(400, "Bad Request", "Invalid task ID");
+    }
+
     // Find the user by ID in the database
     const task = await Task.findById(taskId);
 
     if (!task) {
       return res.status(404).json({ error: "Task not found." });
     }
-    
+
     if (task.isDeleted) {
-        return res.json({
-          message: "This task has been deleted.",
-          task: null,
-        });
-      }
+      return res.json({
+        message: "This task has been deleted.",
+        task: null,
+      });
+    }
 
     return res.json({
       message: "Get a Single Task By Id Successfully",
@@ -102,31 +107,20 @@ taskController.getTaskById = async (req, res, next) => {
   }
 };
 
-taskController.getAllTasksByUserId = async (req, res, next) => {
-    try {
-      const { userId } = req.params; // Get the user ID from the URL parameter
-
-      // Check if userId is a valid MongoDB ObjectId
-    if (!isValidObjectId(userId)) {
-        throw new AppError(400, "Bad Request", "Invalid user ID");
-      }  
-  
-      // Fetch all tasks assigned to the specified user ID
-      const tasks = await Task.find({ assignee: userId, isDeleted: { $ne: true } });
-
-      res.json({
-        message: "Get All Tasks By UserId Successfully",
-        tasks
-      });
-  } catch (err) {
-    console.error("Error:", err);
-    res.status(500).json({ error: "An internal server error occured." });
-  }
-};
-
 taskController.editTask = async (req, res, next) => {
   try {
     const taskId = req.params.id;
+
+    // Check if userId is a valid MongoDB ObjectId
+    if (!isValidObjectId(taskId)) {
+      throw new AppError(400, "Bad Request", "Invalid task ID");
+    }
+
+    // Handle validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
 
     // Find the user by ID in the database
     const task = await Task.findById(taskId);
@@ -164,6 +158,11 @@ taskController.editTask = async (req, res, next) => {
 taskController.deleteTask = async (req, res, next) => {
   try {
     const taskId = req.params.id;
+
+    // Check if userId is a valid MongoDB ObjectId
+    if (!isValidObjectId(taskId)) {
+      throw new AppError(400, "Bad Request", "Invalid task ID");
+    }
     // Find the task by ID in the database
     const task = await Task.findById(taskId);
 
@@ -177,6 +176,37 @@ taskController.deleteTask = async (req, res, next) => {
     // Respond with the success message and the updated user data
     res.json({
       message: "Delete Task Successfully!",
+      task,
+    });
+  } catch (err) {
+    console.error("Error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
+  }
+};
+
+taskController.unassignTask = async (req, res, next) => {
+  try {
+    const taskId = req.params.id;
+
+    // Check if userId is a valid MongoDB ObjectId
+    if (!isValidObjectId(taskId)) {
+      throw new AppError(400, "Bad Request", "Invalid task ID");
+    }
+
+    // Find the task by ID in the database
+    const task = await Task.findById(taskId);
+
+    if (!task) {
+      return res.status(404).json({ error: "Task not found." });
+    }
+
+    // Unassign the task by setting the assignee to null
+    task.assignee = null;
+    await task.save();
+
+    // Respond with the success message and the updated task data
+    res.json({
+      message: "Unassign Task Successfully",
       task,
     });
   } catch (err) {
